@@ -1,0 +1,28 @@
+import numpy as np
+from numpy import random as rnd
+
+def systemMake(L=1, n=50):
+    # Initialize arrays to store positions and types
+    positions = np.zeros((n, 3), dtype=int)  # (y, x, z)
+    monomer_types = np.empty(n, dtype=object)  # Types like 'A' or 'B'
+
+    # Generate unique positions for each monomer
+    used_positions = set()
+    monomer_index = 0
+
+    for _ in range(n):  # For eeach monomer
+        while True:
+            x = rnd.randint(0, 10 * L)
+            y = rnd.randint(0, 10 * L)
+            pos = (y, x)
+            if pos not in used_positions:
+                positions[monomer_index, :2] = [y, x]  # Set y, x
+                positions[monomer_index, 2] = 0  # Default z-coordinate
+                monomer_types[monomer_index] = "A"  # Example type
+                used_positions.add(pos)
+                monomer_index += 1
+                break
+
+    return positions, monomer_types
+
+print (systemMake())
