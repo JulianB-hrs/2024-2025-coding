@@ -1,28 +1,61 @@
 import numpy as np
 from numpy import random as rnd
 
-def systemMake(L=1, n=50):
+def systemBase(L=1, n=50):
     # Initialize arrays to store positions and types
-    positions = np.zeros((n, 3), dtype=int)  # (y, x, z)
-    monomer_types = np.empty(n, dtype=object)  # Types like 'A' or 'B'
+    positions = np.zeros((n, 10, 3), dtype=int)  # the 50 polymers and the 10 monomers
+    monomer_types = np.empty((n, 10), dtype=object)  # Types like 'A' or 'B'
 
     # Generate unique positions for each monomer
     used_positions = set()
-    monomer_index = 0
+    moni = 0 #monomer index
 
-    for _ in range(n):  # For eeach monomer
+    for i in range(n):  # For each polymer
         while True:
             x = rnd.randint(0, 10 * L)
             y = rnd.randint(0, 10 * L)
             pos = (y, x)
             if pos not in used_positions:
-                positions[monomer_index, :2] = [y, x]  # Set y, x
-                positions[monomer_index, 2] = 0  # Default z-coordinate
-                monomer_types[monomer_index] = "A"  # Example type
+                positions[i, 0] = [x, y, 0]  # Set y, x, z coordinates
+                monomer_types[i,0] = "A"  # Example type
                 used_positions.add(pos)
-                monomer_index += 1
                 break
 
     return positions, monomer_types
 
-print (systemMake())
+def systemBlock(base, mtype): #block polymer simulation
+    for i in range(len(base)):
+        x = base[i,0,0]
+        y = base[i,0,1]
+        z = 1
+        for j in range(1,10):
+            base[i,j] = [x , y , z]
+            if j < 5:
+                mtype[i,j] = "A"
+            else:
+                mtype[i,j] = "B"
+            z +=1
+    return base, mtype
+
+def systemAlter(base , mtype): #alternating polymer simulation
+    for i in range(len(base)):
+        x = base[i,0,0]
+        y = base[i,0,1]
+        z = 1
+        for j in range(1,10):
+            base[i,j] = [x , y , z]
+            if j % 2 == 0:
+                mtype[i,j] = "A"
+            else:
+                mtype[i,j] = "B"
+            z +=1
+    return base, mtype
+
+base , mtype = systemBase()
+
+#print (systemBlock(base,mtype))
+for i in range(50):
+        print (systemAlter(base,mtype)[0][i] , systemAlter(base,mtype)[1][i] )
+
+#for i in range(50):
+    #print (systemBase()[0][i][0])
