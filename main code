@@ -51,11 +51,15 @@ def systemAlter(base , mtype): #alternating polymer simulation
             z +=1
     return base, mtype
 
-base , mtype = systemBase()
+def pickrndmon(base, mtype):
+    rndpol = rnd.randint(50)
+    rndmon = rnd.randint(10)
+    rndpos = base[rndpol,rndmon]
+    rndtyp = mtype[rndpol,rndmon]
+    return rndpos , rndtyp
+    
+    
+base0 , mtype0 = systemBase()
+base , mtype = systemBlock(base0, mtype0)
 
-#print (systemBlock(base,mtype))
-for i in range(50):
-        print (systemAlter(base,mtype)[0][i] , systemAlter(base,mtype)[1][i] )
-
-#for i in range(50):
-    #print (systemBase()[0][i][0])
+print(pickrndmon(base,mtype))
