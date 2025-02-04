@@ -1,0 +1,33 @@
+T = 0.5 # change for different T (0.5,1,2)
+def axis_picker(var):
+    axis = ['X','Y','Z']
+    return axis[var]
+
+def monte(steps):
+    for _ in range(steps):
+        # save position every 1000th step and add to external array
+        # insert - pick random particle
+        #save current position
+        displacement = random.uniform(-1,1)
+        a = np.random.randint(0,3)
+        b = axis_picker(a)
+        direction =b
+        if direction == 'X':
+            # x_value of particle += displacement
+        elif direction =='Y':
+            # y_value of particle += displacement
+        elif direction == 'Z':
+            # z_value of particle += displacement
+        #calculate new_energy
+        difference= old_energy - new_energy
+        k= random.uniform(0,1)
+        if math.exp(-difference/T)>k:
+            continue
+        else : #return to position at start of loop
+            continue
+steps = 500000
+a = monte(steps)
+print(a)
+
+#take external array of every 1000th postions and calculate density
+# plot graph
