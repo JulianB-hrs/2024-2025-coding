@@ -1,0 +1,153 @@
+mport numpy as np
+import random
+import math
+from numpy import random as rnd
+ 
+# === System Initialization ===
+def systemBase(L=1, n=50):
+    """Initialize polymer system with unique grafting points."""
+    positions = np.zeros((n, 10, 3), dtype=int)  # 50 polymers, 10 monomers, 3D space
+    monomer_types = np.empty((n, 10), dtype=object)  # 'A' or 'B'
+    used_positions = set()
+ 
+    for i in range(n):  # For each polymer
+        while True:
+            x = rnd.randint(0, 10 * L)
+            y = rnd.randint(0, 10 * L)
+            pos = (y, x)
+            if pos not in used_positions:
+                positions[i, 0] = [x, y, 0]  # (x, y, z=0)
+                monomer_types[i, 0] = "A"
+                used_positions.add(pos)
+                break
+ 
+    return positions, monomer_types
+ 
+def systemBlock(base, mtype):
+    """Set up block copolymer (AAAAABBBBB)."""
+    for i in range(len(base)):
+        x, y = base[i, 0, 0], base[i, 0, 1]
+        z = 1
+        for j in range(1, 10):
+            base[i, j] = [x, y, z]
+            mtype[i, j] = "A" if j < 5 else "B"
+            z += 1
+    return base, mtype
+ 
+def systemAlter(base, mtype):
+    """Set up alternating copolymer (ABABABABAB)."""
+    for i in range(len(base)):
+        x, y = base[i, 0, 0], base[i, 0, 1]
+        z = 1
+        for j in range(1, 10):
+            base[i, j] = [x, y, z]
+            mtype[i, j] = "A" if j % 2 == 0 else "B"
+            z += 1
+    return base, mtype
+ 
+
+ 
+# === Energy Computation ===
+def compute_spring_energy(base, k=1):
+    """Calculate spring energy using Hookean potential."""
+    total_spring_energy = 0
+    for i in range(len(base)):  
+        for j in range(9):  
+            d_ij = np.linalg.norm(base[i, j + 1] - base[i, j])
+            total_spring_energy += 0.5 * k * d_ij**2
+    return total_spring_energy
+ 
+def compute_interaction_energy(base, C_int, R=1):
+    """Calculate interaction energy between monomers."""
+    total_interaction_energy = 0
+    n_polymers, n_monomers, _ = base.shape
+ 
+    for i in range(n_polymers):
+        for j in range(n_monomers):
+            pos_i = base[i, j]
+            for i2 in range(n_polymers):
+                for j2 in range(n_monomers):
+                    if i == i2 and j == j2:
+                        continue
+                    pos_j = base[i2, j2]
+                    d_ij = np.linalg.norm(pos_j - pos_i)
+                    if d_ij < R:
+                        total_interaction_energy += C_int * np.cos((np.pi / 2) * (d_ij / R))
+    return total_interaction_energy / 2  
+ 
+def compute_surface_energy(base):
+    """Calculate surface interaction energy."""
+    total_surface_energy = np.sum(base[:, :, 2] < 0) * 1e9
+    return total_surface_energy
+ 
+def compute_total_energy(base, k, C_int, R):
+    """Compute the total energy of the system."""
+    E_spring = compute_spring_energy(base, k)
+    E_interaction = compute_interaction_energy(base, C_int, R)
+    E_surface = compute_surface_energy(base)
+    return E_spring + E_interaction + E_surface
+
+
+datatable = []
+def axis_picker(a):
+    axis = ['X','Y','Z']
+    axis_chosen = axis[a]
+    return axis_chosen
+
+def pickrndmon(base, mtype):
+    """Randomly pick a monomer."""
+    rndpol = rnd.randint(50)
+    rndmon = rnd.randint(10)
+    rndpos = base[rndpol, rndmon]
+    rndtyp = mtype[rndpol, rndmon]
+    return rndpos, rndtyp
+    
+def displacement(c,axis_chosen,rndpos):
+    displacement = c
+    old_pos = np.copy(rndpos)
+    randommon = pickrndmon(base, mtype)
+    polind= randommon[0][0] #polymer index
+    monind= randommon[0][1]
+    while displacement == -1 or displacement == 1:
+       displacement = (random.uniform(-1,1))
+    if axis_chosen == 'X':
+      base[polind,monind] = displacement,0,0
+      new_pos = base[polind,monind]
+    elif axis_chosen == 'Y':
+     base[polind,monind] = 0,displacement,0
+     new_pos = base[polind,monind]
+    else:
+      base[polind,monind] = 0,0,displacement 
+      new_pos = base[polind,monind]
+    return new_pos
+    
+def energychange(new_pos):
+     k = random.uniform(0,1)
+     difference= new_energy - old_energy #dependant on how energy change has been setup
+     if math.exp(-difference/T) < k:
+        final_pos = new_pos
+     else:
+        final_pos = old_pos
+def datalog(steps):
+    if steps%1000 == 0:
+        datatable.append(final_pos)
+    return datatable
+
+base , mtype = systemBase()
+
+def sim(base , steps,k,T,C_int,R):
+    for i in range(steps):
+     #calculate energy
+     #choose a particle
+     old_energy = compute_total_energy(base, k, C_int, R)
+     a_chosen = axis_picker(np.random.randint(0,3))
+     p_chosen = pickrndmon(base, mtype)
+     pos_change = displacement(random.uniform(-1,1),a_chosen,p_chosen)
+     new_energy = compute_total_energy(base, k, C_int, R)
+     data_table = datalog((steps+i)-50000)
+     print(data_table)
+     i = i + 1
+
+monte = sim(base,50000,1,0.5,-1,1)
+
+
