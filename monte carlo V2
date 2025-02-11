@@ -1,4 +1,4 @@
-def move_particle(base, L=1, step_size=1):
+def move_particle(base, L=1, displacement=1):
     #"""Move a randomly selected monomer."""
     rndpol = rnd.randint(50)
     rndmon = rnd.randint(10)
@@ -23,7 +23,7 @@ def move_particle(base, L=1, step_size=1):
     
     return base, rndpol, rndmon, current_pos, new_pos
 
-def monte_carlo_simulation(base, number of steps=50000, step_size=1):
+def monte_carlo_simulation(base, number_of_steps=50000, displacement=1):
     #"""Perform Monte Carlo simulation and calculate energy differences."""
     energy_diffs = []
     initial_energy = compute_total_energy(base)
@@ -38,14 +38,14 @@ def monte_carlo_simulation(base, number of steps=50000, step_size=1):
         energy_diff = new_energy - initial_energy
         energy_diffs.append(energy_diff)
         
-        # Revert the move to restore the original position (optional for MC rejection step)
+        # Revert the move to restore the original position 
         base[rndpol, rndmon] = old_pos
 
         #accept or reject
         T == 0.5
         k= random.uniform(0,1)
         if math.exp(-energy_diff/T)<k:
-        continue
+            continue
 
         # Update initial energy for the next iteration
         initial_energy = new_energy
@@ -53,3 +53,9 @@ def monte_carlo_simulation(base, number of steps=50000, step_size=1):
 
 
     return base, energy_diffs
+
+
+positions, monomer_types = systemBase(L=1, n=50)
+positions, monomer_types = systemBlock(positions, monomer_types)
+positions, energy_diffs = monte_carlo_simulation(positions, n_steps=50000, displacement=1)
+  
