@@ -144,7 +144,8 @@ def sim(base , steps,k,T,C_int,R):
      p_chosen = pickrndmon(base, mtype)
      pos_change = displacement(random.uniform(-1,1),a_chosen,p_chosen)
      new_energy = compute_total_energy(base, k, C_int, R)
-     data_table = datalog((steps+i)-50000)
+     energy = energychange(new_pos)
+     data_table = datalog((steps+i)-50000
      print(data_table)
      i = i + 1
 
