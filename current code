@@ -1,0 +1,198 @@
+# === main code assembly ===
+
+import numpy as np
+from numpy import random as rnd
+import math as ma
+
+
+def systemBase(L=1, n=50):
+    # Initialize arrays to store positions and types
+    positions = np.zeros((n, 10, 3), dtype=float)  # the 50 polymers and the 10 monomers
+    monomer_types = np.full((n, 10), "", dtype=object)  # Types like 'A' or 'B'
+
+    # Generate unique positions for each monomer
+    used_positions = set()
+    moni = 0 #monomer index
+
+    x_vals = rnd.randint(0, 10 * L, size=n)
+    y_vals = rnd.randint(0, 10 * L, size=n)
+    positions[:, 0, :2] = np.column_stack((x_vals, y_vals))  # Set x, y
+    monomer_types[:, 0] = "A"  # Set initial monomer type
+
+    return positions, monomer_types
+
+
+def systemBlock(base, mtype):
+    z_values = np.arange(1, 10)  # Precompute z values
+    base[:, 1:, 0] = base[:, 0, 0, np.newaxis]  # Set x for all monomers
+    base[:, 1:, 1] = base[:, 0, 1, np.newaxis]  # Set y for all monomers
+    base[:, 1:, 2] = z_values  # Set z values from 1 to 9
+
+    mtype[:, 1:5] = "A"
+    mtype[:, 5:] = "B"
+    
+    return base, mtype
+
+
+def systemAlter(base, mtype):
+    z_values = np.arange(1, 10)  # Precompute z values
+    base[:, 1:, 0] = base[:, 0, 0, np.newaxis]  # Set x for all monomers
+    base[:, 1:, 1] = base[:, 0, 1, np.newaxis]  # Set y for all monomers
+    base[:, 1:, 2] = z_values  # Set z values from 1 to 9
+
+    mtype[:, 2:9:2] = "A"
+    mtype[:, 1:10:2] = "B"
+    
+    return base, mtype
+
+
+base0 , mtype0 = systemBase()
+base , mtype = systemAlter(base0, mtype0)
+
+for i in range(50):
+        print (base0[i], mtype0[i] )
+
+
+def pickrndmon(base, mtype):
+    rndpol = rnd.randint(50)
+    rndmon = rnd.randint(10)
+    rndpos = base[rndpol,rndmon]
+    rndtyp = mtype[rndpol,rndmon]
+    return rndpos , rndtyp , rndpol , rndmon
+    
+base0 , mtype0 = systemBase()
+base , mtype = systemBlock(base0, mtype0)
+
+#print(pickrndmon(base,mtype))
+
+
+
+# === Energy Computation ===
+
+def interaction_type(mtype, pol, mon1, mon2):
+    if mtype[pol,mon1] == mtype[pol,mon2]:
+        c_int = 1
+    else: 
+        c_int= -1
+        return c_int
+
+
+def compute_spring_energy(base, k=1):
+    #Calculate spring energy using Hookean potential
+    total_spring_energy = 0
+    for i in range(len(base)):  
+        for j in range(9):  
+            d = np.linalg.norm(base[i, j + 1] - base[i, j])
+            total_spring_energy += 0.5 * k * d**2
+    return total_spring_energy
+
+
+def compute_interaction_energy(base, C_int, R=1):
+    # Reshape base to combine polymers and monomers into a single array of positions
+    n_polymers, n_monomers, dim = base.shape
+    positions = base.reshape(-1, dim) 
+    
+    # Compute pairwise differences using broadcasting 
+    diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]  # Shape: (N, N, dim)
+    
+    # Compute pairwise distances
+    distances = np.linalg.norm(diff, axis=-1)  # Shape: (N, N)
+
+    # Exclude self-interactions using a mask (diagonal elements)
+    mask = np.triu((distances < R), k=1)  # Upper triangle to avoid double-counting
+
+    # Compute interaction energy only for distances within cutoff R
+    interaction_energy = C_int * np.cos((np.pi / 2) * (distances / R))
+    
+    # Apply mask to ignore self-interactions and distances beyond R
+    total_interaction_energy = np.sum(interaction_energy[mask])
+
+    return total_interaction_energy
+
+
+ 
+def compute_surface_energy(base):
+    #Calculate surface interaction energy.
+    total_surface_energy = np.sum(base[:, :, 2] < 0) * 1e9
+    return total_surface_energy
+ 
+def compute_total_energy(base, k=1, C_int=-0.5, R=1):
+    #Compute the total energy of the system.
+    E_spring = compute_spring_energy(base, k)
+    E_interaction = compute_interaction_energy(base, C_int, R)
+    E_surface = compute_surface_energy(base)
+    return E_spring + E_interaction + E_surface
+
+
+
+# === monte carlo simulation ===
+
+def move_particle(base, L=1):
+    #Move a randomly selected monomer.
+    rndpol = rnd.randint(50)
+    rndmon = rnd.randint(10)
+    
+    # Generate a random axis (0 for x, 1 for y, 2 for z)
+    axis = rnd.randint(3)
+    
+    # Generate a random displacement in the chosen axis
+    displacement = rnd.uniform(-1,1)
+    
+    old_pos = base[rndpol, rndmon].copy()  # Copy only the needed row
+    base[rndpol, rndmon, axis] += displacement
+    
+    return rndpol, rndmon, old_pos
+
+def monte_carlo_simulation(base, n_steps=50000):
+    #Perform Monte Carlo simulation and calculate energy differences.
+    positions_table = []
+    energy_diffs = []
+    initial_energy = compute_total_energy(base)
+    density_table = []
+    
+    for n in range(n_steps):
+        rndpol, rndmon, old_pos = move_particle(base)
+        
+        # Calculate new energy after moving the particle
+        new_energy = compute_total_energy(base)
+        if np.isnan(new_energy) or np.isinf(new_energy):
+            print(f"Invalid energy at step {n}.")
+            break
+        
+        # Calculate energy difference
+        energy_diff = new_energy - initial_energy
+        energy_diffs.append(energy_diff)
+
+        
+
+        if n % 1000 == 0 :
+            positions_table.append(np.copy(base))
+            density = calculate_density(positions, distance = 2)
+            density_table.append(density)
+            
+
+        #accept or reject
+        T = 0.5
+        k= rnd.uniform(0,1)
+        if ma.exp(-energy_diff/T)<k:
+            base[rndpol , rndmon] = old_pos
+        else:
+            initial_energy = new_energy
+
+    return base, energy_diffs, positions_table, density_table
+    
+def calculate_density(positions, distance = 2):
+                number = np.sum(positions[ : , :, 2] <= distance)
+                volume = 200
+                density  =number/volume
+                return density
+
+
+
+system_base = systemBase()
+positions, monomer_types = system_base
+positions, monomer_types = systemBlock(positions, monomer_types)
+positions, energy_diffs = monte_carlo_simulation(positions)
+
+  
+print("all good")
