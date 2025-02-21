@@ -26,7 +26,7 @@ def move_particle(base, L=1):
     rndpol = rnd.randint(50)
     rndmon = rnd.randint(10)
     axis = rnd.randint(3)
-    displacement = rnd.uniform(-0.5, 0.5)  # Smaller displacement
+    displacement = rnd.uniform(-1, 1)  # Displacement between -1 and 1
     base[rndpol, rndmon, axis] += displacement
     return rndpol, rndmon, displacement, axis
 
@@ -75,22 +75,20 @@ def compute_total_energy(base, k=1, C_int_attractive=0.5, C_int_repulsive=-0.5, 
     E_surface = compute_surface_energy(base, changed_particle)
     return E_spring + E_interaction_attractive + E_interaction_repulsive + E_surface
 
-def monte_carlo_simulation(base, n_steps=50000, step_interval=1000, initial_temp=1.0, final_temp=0.1):
+def monte_carlo_simulation(base, n_steps=50000, step_interval=1000, temperature=0.5):
     positions_table = []
     density_table = []
     initial_energy = compute_total_energy(base)
     
     for n in range(n_steps):
-        # Linearly annealing the temperature
-        T = initial_temp - (initial_temp - final_temp) * (n / n_steps)
-
         rndpol, rndmon, displacement, axis = move_particle(base)
         
         new_energy = compute_total_energy(base, changed_particle=(rndpol, rndmon, displacement))
         energy_diff = new_energy - initial_energy
         
+        # Accept or reject the move based on the Metropolis criterion
         k = rnd.uniform(0, 1)
-        if energy_diff > 0 and ma.exp(-energy_diff / T) < k:
+        if energy_diff > 0 and ma.exp(-energy_diff / temperature) < k:
             base[rndpol, rndmon, axis] -= displacement  # Revert the move
         else:
             initial_energy = new_energy
@@ -120,9 +118,10 @@ start_time = time.time()
 
 positions, monomer_types = systemBase()
 positions, monomer_types = systemBlock(positions, monomer_types)
-positions, positions_table, density_table = monte_carlo_simulation(positions, n_steps=50000, step_interval=1000)
+positions, positions_table, density_table = monte_carlo_simulation(positions, n_steps=500000, step_interval=1000)
 
 plot_density_vs_steps(density_table)
 
 end_time = time.time()
 print("Simulation completed in {:.2f} seconds".format(end_time - start_time))
+
