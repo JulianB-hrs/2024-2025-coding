@@ -68,7 +68,7 @@ def compute_surface_energy(base, changed_particle=None):
     else:
         return np.sum(base[:, :, 2] < 0) * 1e9
 
-def compute_total_energy(base, k=1, C_int_attractive=0.5, C_int_repulsive=-0.5, R=1, changed_particle=None):
+def compute_total_energy(base, k=1, C_int_attractive=-0.5, C_int_repulsive=0.5, R=1, changed_particle=None):
     E_spring = compute_spring_energy(base, k, changed_particle)
     E_interaction_attractive = compute_interaction_energy(base, C_int_attractive, R, changed_particle)
     E_interaction_repulsive = compute_interaction_energy(base, C_int_repulsive, R, changed_particle)
