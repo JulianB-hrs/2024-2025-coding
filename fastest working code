@@ -22,6 +22,18 @@ def systemBlock(base, mtype):
     mtype[:, 5:] = "B"
     return base, mtype
 
+def systemAlter(base, mtype):
+    z_values = np.arange(1, 10)  # Precompute z values
+    base[:, 1:, 0] = base[:, 0, 0, np.newaxis]  # Set x for all monomers
+    base[:, 1:, 1] = base[:, 0, 1, np.newaxis]  # Set y for all monomers
+    base[:, 1:, 2] = z_values  # Set z values from 1 to 9
+
+    mtype[:, 2:9:2] = "A"
+    mtype[:, 1:10:2] = "B"
+    
+    return base, mtype
+
+
 def move_particle(base, L=1):
     rndpol = rnd.randint(50)
     rndmon = rnd.randint(10)
