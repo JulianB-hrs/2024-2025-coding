@@ -75,7 +75,7 @@ def compute_total_energy(base, k=1, C_int_attractive=-0.5, C_int_repulsive=0.5, 
     E_surface = compute_surface_energy(base, changed_particle)
     return E_spring + E_interaction_attractive + E_interaction_repulsive + E_surface
 
-def monte_carlo_simulation(base, n_steps=50000, step_interval=1000, temperature=0.5):
+def monte_carlo_simulation(base, n_steps=500000, step_interval=1000, temperature=0.5):
     positions_table = []
     density_table = []
     initial_energy = compute_total_energy(base)
