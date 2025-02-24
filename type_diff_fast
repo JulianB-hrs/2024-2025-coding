@@ -1,0 +1,183 @@
+import time
+import numpy as np
+from numpy import random as rnd
+import math as ma
+import matplotlib.pyplot as plt
+
+# === System Constants ===
+
+c_intr = 1   # Repulsive interaction
+c_inta = -1  # Attractive interaction
+temp = 2
+
+# === System Initialization ===
+
+def systemBase(L=1, n=50):
+    positions = np.zeros((n, 10, 3), dtype=float)
+    monomer_types = np.full((n, 10), 0, dtype=int)
+    x_vals = rnd.randint(0, 10 * L, size=n)
+    y_vals = rnd.randint(0, 10 * L, size=n)
+    positions[:, 0, :2] = np.column_stack((x_vals, y_vals))
+    monomer_types[:, 0] = -1
+    return positions, monomer_types
+
+def systemBlock(base, mtype):
+    z_values = np.arange(1, 10)
+    base[:, 1:, 0] = base[:, 0, 0, np.newaxis]
+    base[:, 1:, 1] = base[:, 0, 1, np.newaxis]
+    base[:, 1:, 2] = z_values
+    
+    mtype[:, 1:5] = -1
+    mtype[:, 5:] = 1
+    
+    return base, mtype
+
+def systemAlter(base, mtype):
+    z_values = np.arange(1, 10) 
+    base[:, 1:, 0] = base[:, 0, 0, np.newaxis] 
+    base[:, 1:, 1] = base[:, 0, 1, np.newaxis]  
+    base[:, 1:, 2] = z_values  
+
+    mtype[:, 2:9:2] = -1
+    mtype[:, 1:10:2] = 1
+    
+    return base, mtype
+
+#=== Energy Calculations ===
+
+def move_particle(base, L=1):
+    rndpol = rnd.randint(base.shape[0])
+    rndmon = rnd.randint(base.shape[1])
+    axis = rnd.randint(3)
+    displacement = rnd.uniform(-1, 1)
+    base[rndpol, rndmon, axis] += displacement
+    return rndpol, rndmon, displacement, axis
+
+def interaction_type(changed_mtype, int_mtypes):
+    return np.where(changed_mtype == int_mtypes, c_intr, c_inta)
+
+def compute_interaction_energy(base, mtype, changed_particle=None, R=1):
+    if changed_particle:
+        pol, mon, _ = changed_particle
+        changed_pos = base[pol, mon, :]
+        changed_mtype = mtype[pol, mon]
+
+        # Calculate distances from the changed particle to all others
+        diff = changed_pos - base[:, :, :]
+        distances = np.linalg.norm(diff, axis=-1)
+
+        mask = (distances < R) & (distances != 0)
+        if np.sum(mask) > 0:  # Ensure there are interactions within the cutoff
+            int_mtypes = mtype[mask]
+            interaction_matrix = interaction_type(changed_mtype, int_mtypes)
+            interaction_energy = np.sum(interaction_matrix * np.cos((np.pi / 2) * (distances[mask] / R)))
+            return interaction_energy
+        else:
+            return 0  # If no interactions within the cutoff, return zero    else:
+        # Reshape base to combine polymers and monomers into a single array of positions
+
+    else:
+        n_polymers, n_monomers, dim = base.shape
+        positions = base.reshape(-1, dim)  # Shape: (N, 3)
+        types = mtype.reshape(-1)  # Shape: (N,)
+
+        diff = positions[:, np.newaxis, :] - positions[np.newaxis, :, :]  # Shape: (N, N, dim)
+        distances = np.linalg.norm(diff, axis=-1)  # Shape: (N, N)
+        mask = np.triu((distances < R), k=1)  # Upper triangle to avoid double-counting
+
+        c_int_matrix = np.where(types[:, np.newaxis] == types[np.newaxis, :], c_intr, c_inta)  # Shape: (N, N)
+
+        # Compute interaction energy only for distances within cutoff R
+        interaction_energy = c_int_matrix * np.cos((np.pi / 2) * (distances / R))
+        # Apply mask to ignore self-interactions and distances beyond R
+        total_interaction_energy = np.sum(interaction_energy[mask])
+
+        return total_interaction_energy
+
+def compute_spring_energy(base, k=1, changed_particle=None):
+    if changed_particle:
+        pol, mon, _ = changed_particle
+        neighbors = [[pol, mon-1], [pol, mon+1]]
+        energy = 0
+        for neighbor in neighbors:
+            if 0 <= neighbor[1] < 10:
+                diff = base[neighbor[0], neighbor[1], :] - base[pol, mon, :]
+                energy += 0.5 * k * np.linalg.norm(diff)**2
+        return energy
+    else:
+        diff = base[:, 1:] - base[:, :-1]
+        return 0.5 * k * np.sum(np.linalg.norm(diff, axis=-1)**2)
+
+
+def compute_surface_energy(base, changed_particle=None):
+    if changed_particle:
+        pol, mon, _ = changed_particle
+        return 1e9 if base[pol, mon, 2] < 0 else 0
+    else:
+        return np.sum(base[:, :, 2] < 0) * 1e9
+
+def compute_total_energy(base, mtype, k=1, R=1, changed_particle=None):
+    E_spring = compute_spring_energy(base, k, changed_particle)
+    E_interaction = compute_interaction_energy(base, mtype, changed_particle, R)
+    E_surface = compute_surface_energy(base, changed_particle)
+
+    if E_spring is None :
+        raise ValueError("E_spring returned None instead of a valid value")
+    if E_interaction is None:
+        raise ValueError("E_interaction returned None instead of a valid value")
+    if E_surface is None:
+        raise ValueError("E_suface returned None instead of a valid value")
+
+    return E_spring + E_interaction + E_surface
+
+# === Monte Carlo Simulation ===
+
+def monte_carlo_simulation(base, mtype, n_steps=500000, step_interval=1000, temperature=temp):
+    positions_table = []
+    density_table = []
+    initial_energy = compute_total_energy(base, mtype)
+
+    for n in range(n_steps):
+        rndpol, rndmon, displacement, axis = move_particle(base)
+        new_energy = compute_total_energy(base, mtype, changed_particle=(rndpol, rndmon, displacement))
+        energy_diff = new_energy - initial_energy
+
+        if energy_diff > 0 and ma.exp(-energy_diff / temperature) < rnd.uniform(0, 1):
+            base[rndpol, rndmon, axis] -= displacement
+        else:
+            initial_energy = new_energy
+
+        if n % step_interval == 0:
+            positions_table.append(np.copy(base))
+            density = calculate_density(base, distance=2)
+            density_table.append(density)
+
+    return base, positions_table, density_table
+
+def calculate_density(positions, distance=2):
+    number = np.sum(positions[:, :, 2] <= distance)
+    volume = 200
+    return number / volume
+
+def plot_density_vs_steps(density_table, step_interval=1000):
+    steps = np.arange(0, len(density_table) * step_interval, step_interval)
+    plt.plot(steps, density_table, marker='o')
+    plt.xlabel('Steps')
+    plt.ylabel('Density')
+    plt.title('Density vs. Steps')
+    plt.grid(True)
+    plt.show()
+
+# === Main Execution ===
+
+start_time = time.time()
+for _ in range(10):
+    
+    positions, monomer_types = systemBase()
+    positions, monomer_types = systemAlter(positions, monomer_types)
+    positions, positions_table, density_table = monte_carlo_simulation(positions, monomer_types, n_steps=500000, step_interval=1000)
+
+    plot_density_vs_steps(density_table)
+
+end_time = time.time()
+print("Simulation completed in {:.2f} seconds".format(end_time - start_time))
